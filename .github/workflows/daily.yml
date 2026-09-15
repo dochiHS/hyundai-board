@@ -3,7 +3,12 @@ name: daily-fetch
 on:
   schedule:
     - cron: '40 6 * * 1-5'   # 평일 15:40 KST (장 마감 뒤)
-  workflow_dispatch: {}      # Actions 탭에서 'Run workflow'로 직접 실행
+  workflow_dispatch:         # Actions 탭에서 'Run workflow'로 직접 실행
+    inputs:
+      chart_only:
+        description: '차트 시세만 받기 (일별 기록은 건드리지 않음)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,7 +26,11 @@ jobs:
         with:
           node-version: '20'
       - name: 실제 조회 (비밀키 없음)
+        if: ${{ !inputs.chart_only }}
         run: node scripts/fetch-daily.js
+      - name: 차트용 일봉 받기 (실패해도 계속)
+        continue-on-error: true
+        run: node scripts/fetch-history.js
       - name: 기록 저장
         run: |
           git config user.name "github-actions[bot]"
