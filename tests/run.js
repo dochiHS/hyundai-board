@@ -139,7 +139,7 @@ const yahoo = (price, t, extra = {}) => ({
 
 // 7. 차트 데이터 (합성 일봉)
 {
-  const { normalizeHistory, aggregate, movingAverage, changeOf } = await import('../chart-data.js');
+  const { normalizeHistory, aggregate, movingAverage, changeOf, mergeBars } = await import('../chart-data.js');
   const day = (iso) => Date.parse(`${iso}T00:00:00Z`) / 1000; // KST 09:00
   const ts = [day('2026-09-07'), day('2026-09-08'), day('2026-09-09'), day('2026-09-14'), day('2026-09-15'), day('2026-10-01'), day('2027-01-04')];
   const json = { chart: { result: [{ meta: { currency: 'KRW' }, timestamp: [...ts, day('2026-09-10')], indicators: { quote: [{
@@ -162,6 +162,8 @@ const yahoo = (price, t, extra = {}) => ({
   let threw = false;
   try { normalizeHistory({ chart: { result: [{ ...json.chart.result[0], meta: { currency: 'KRW', dataGranularity: '1mo' } }] } }); } catch { threw = true; }
   check('월봉 응답은 일봉으로 저장하지 않음', threw);
+  const merged = mergeBars(bars.slice(0, 5), [['2026-09-15', 1, 2, 1, 2, 9], ['2026-09-16', 3, 4, 3, 4, 9]]);
+  check('최근 5일 보충 (같은 날짜 덮어쓰기 + 새 날짜 추가)', merged.length === 6 && merged[4][4] === 2 && merged[5][0] === '2026-09-16');
   const ch = changeOf(w[1]);
   check('봉 등락 계산', ch.diff === 142 - 122);
 }
