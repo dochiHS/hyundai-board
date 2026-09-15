@@ -1,0 +1,12 @@
+{
+  "signal": {
+    "signal_id": "hyundai-motor-005380",
+    "symbol": "005380.KS",
+    "source_name": "Yahoo Finance · 현대차(005380.KS)",
+    "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=1d&interval=1d"
+  },
+  "rows": [],
+  "status": null,
+  "last_attempt": null,
+  "attempts": []
+}

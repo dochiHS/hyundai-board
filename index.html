@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>현대차 오늘의 정보판</title>
+<meta name="description" content="현대차(005380) 주가를 매일 한 줄씩 기록하고, 데이터가 안 올 때도 정직하게 보여 주는 정보판">
+<style>
+  :root {
+    --bg: #0f0f10; --panel: #17171a; --line: #2a2a2f; --text: #e9e7e2; --muted: #9a978f; --faint: #6d6a64;
+    --up: #e0786b; --down: #7aa2d6; --warn: #d9b36c; --ok: #9fb89a;
+    --serif: "Nanum Myeongjo", "Noto Serif KR", "AppleMyungjo", "Batang", serif;
+    --sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 var(--sans); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1, h2 { font-family: var(--serif); font-weight: 700; letter-spacing: -0.01em; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0; }
+  section { margin-top: 36px; }
+  .desc { color: var(--muted); font-size: 13.5px; margin: 0 0 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px; }
+  .board-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .name { font-family: var(--serif); font-size: 17px; }
+  .badge { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .badge.fresh { color: var(--ok); border-color: #3c4a3a; }
+  .badge.stale { color: var(--warn); border-color: #5a4a2a; }
+  .badge.synthetic { color: var(--muted); border-style: dashed; }
+  .value { font-family: var(--serif); font-size: 48px; line-height: 1.15; margin: 14px 0 2px; font-variant-numeric: tabular-nums; }
+  .value .unit { font-size: 20px; color: var(--muted); margin-left: 6px; }
+  .value.is-stale { color: #bdb8ad; }
+  .stale-tag { display: inline-block; font-size: 12.5px; color: var(--warn); border: 1px solid #5a4a2a; border-radius: 4px; padding: 1px 7px; margin-left: 8px; vertical-align: middle; font-family: var(--sans); }
+  .delta { font-size: 15px; font-variant-numeric: tabular-nums; }
+  .delta.up { color: var(--up); } .delta.down { color: var(--down); } .delta.flat, .delta.none { color: var(--muted); }
+  dl.meta { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; margin: 18px 0 0; font-size: 14px; }
+  dl.meta dt { color: var(--faint); }
+  dl.meta dd { margin: 0; overflow-wrap: anywhere; }
+  a { color: var(--text); text-decoration-color: var(--faint); text-underline-offset: 3px; }
+  .alert { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .alert b { color: var(--warn); font-weight: 600; }
+  .alert p { margin: 4px 0; color: var(--muted); font-size: 14px; }
+  .alert .next { color: var(--text); }
+  button { font: inherit; font-size: 13.5px; color: var(--text); background: #222226; border: 1px solid #3a3a40; border-radius: 6px; padding: 7px 13px; cursor: pointer; }
+  button:hover { background: #2b2b30; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { border-color: #6b5a36; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .note { font-size: 12.5px; color: var(--faint); margin-top: 10px; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--faint); font-weight: 500; white-space: nowrap; }
+  td.num { text-align: right; white-space: nowrap; }
+  code, .mono { font-family: var(--mono); font-size: 12.5px; }
+  .pass { color: var(--ok); } .fail { color: var(--up); }
+  .empty { color: var(--muted); padding: 10px 0; }
+  .lab-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .lab-grid { grid-template-columns: 1fr; } .value { font-size: 38px; } }
+  .group-label { font-size: 12px; color: var(--faint); margin: 12px 0 6px; }
+  .copy { background: none; border: 1px solid var(--line); padding: 1px 7px; font-size: 12px; color: var(--muted); }
+  footer { margin-top: 48px; color: var(--faint); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 16px; }
+  footer p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>현대차 오늘의 정보판</h1>
+    <p class="sub">현대차(005380) 주가를 매일 한 줄씩 기록합니다. 값이 늦거나 오지 않을 때도 무엇이 문제인지 그대로 보여 줍니다.</p>
+  </header>
+
+  <section id="live">
+    <h2>오늘의 값</h2>
+    <p class="desc">평일 장 마감 뒤(15:40 KST) GitHub Actions가 한 번 조회해 저장합니다. 이 화면은 저장된 기록을 읽습니다.</p>
+    <div class="panel" id="live-board"><p class="empty">불러오는 중…</p></div>
+  </section>
+
+  <section id="check">
+    <h2>원자료 · 저장값 · 화면값 대조</h2>
+    <p class="desc">가장 최근 기록 한 건을 원천 응답 그대로의 값, 저장된 값, 위 화면에 보이는 값으로 나란히 놓습니다.</p>
+    <div class="panel scroll" id="check-table"><p class="empty">기록이 생기면 표시됩니다.</p></div>
+  </section>
+
+  <section id="daily">
+    <h2>일별 기록</h2>
+    <p class="desc">기준 시간대(Asia/Seoul) 날짜마다 한 줄입니다. 같은 날 다시 조회하면 새 줄 대신 그 줄을 갱신합니다. 어제 대비는 저장된 두 값으로 다시 계산합니다.</p>
+    <div class="panel scroll" id="daily-table"><p class="empty">아직 기록이 없습니다.</p></div>
+  </section>
+
+  <section id="attempts">
+    <h2>최근 조회 시도</h2>
+    <p class="desc">성공과 실패를 모두 남깁니다. 실패해도 저장된 값은 지우지 않습니다.</p>
+    <div class="panel scroll" id="attempt-table"><p class="empty">아직 조회 시도가 없습니다.</p></div>
+  </section>
+
+  <section id="lab">
+    <h2>실패 재생 실험실 <span class="badge synthetic">합성 시험값</span></h2>
+    <p class="desc">ALEPH 공개 fixture(v1.1.0, 9종)로 저장·실패·복구를 재생합니다. 여기 값(100·105·120 pt)은 가짜이며 위의 실제 기록과 섞이지 않습니다. 실제 조회와 같은 저장 함수(<code>core.js</code>)를 씁니다.</p>
+    <div class="lab-grid">
+      <div class="panel">
+        <div class="group-label">순서대로 재생</div>
+        <div class="row">
+          <button data-seq="normal">정상 순서 (D1-A → D1-B → D2)</button>
+          <button data-seq="recover">오류 뒤 회복 (→ TIMEOUT → 다시 시도)</button>
+        </div>
+        <div class="group-label">한 단계씩</div>
+        <div class="row">
+          <button data-act="reset">초기화</button>
+          <button data-fx="normal-d1-a">D1-A</button>
+          <button data-fx="normal-d1-b">D1-B</button>
+          <button data-fx="normal-d2">D2</button>
+        </div>
+        <div class="group-label">외부 실패 다섯 종류 (D1-A·D1-B 뒤에 재생)</div>
+        <div class="row">
+          <button data-fail="timeout">느린 응답</button>
+          <button data-fail="auth-401">401 거절</button>
+          <button data-fail="rate-429">호출 제한</button>
+          <button data-fail="offline">오프라인</button>
+          <button data-fail="schema-break">형식 변경</button>
+        </div>
+        <div class="group-label">합성 시계</div>
+        <div class="row">
+          <button data-act="clock">같은 날 3번 + 다음 날 1번</button>
+          <button data-act="all">전체 검사</button>
+        </div>
+        <p class="note" id="lab-log">버튼을 누르면 재생 기록이 여기에 쌓입니다.</p>
+      </div>
+      <div class="panel" id="lab-board"><p class="empty">초기화 상태 · 저장된 행 0개</p></div>
+    </div>
+    <div class="panel scroll" style="margin-top:16px" id="lab-result"><p class="empty">예상값과 실제값 비교가 여기에 표시됩니다.</p></div>
+  </section>
+
+  <footer>
+    <p>데이터: Yahoo Finance 공개 차트 응답(005380.KS), 비밀키 없이 조회. 투자 판단용이 아닙니다.</p>
+    <p>이 사이트는 로그인·쿠키·개인정보를 쓰지 않습니다. 실험실 자료: ALEPH T04 공개 합성 fixture.</p>
+  </footer>
+</div>
+
+<script type="module">
+import {
+  ERROR_GUIDE, kstDateTime, kstRfc3339, computeDelta, latestRow, emptyStore,
+  applyOutcome, identityNormalize, rawFacts, kstDate,
+} from './core.js';
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n) => (typeof n === 'number' ? n.toLocaleString('ko-KR') : '—');
+const unitLabel = (u) => (u === 'KRW' ? '원' : u);
+
+function deltaHtml(d) {
+  if (!d) return '<span class="delta none">어제 대비: 비교할 전날 기록이 아직 없습니다</span>';
+  const cls = d.diff > 0 ? 'up' : d.diff < 0 ? 'down' : 'flat';
+  const arrow = d.diff > 0 ? '▲' : d.diff < 0 ? '▼' : '−';
+  const sign = d.diff > 0 ? '+' : '';
+  const pct = d.pct === null ? '' : ` (${sign}${d.pct.toFixed(2)}%)`;
+  return `<span class="delta ${cls}" data-delta="${d.diff}">어제 대비 ${arrow} ${sign}${fmt(d.diff)}${esc(unitLabel(d.unit))}${pct}</span>
+    <span class="delta none"> · ${esc(d.from_date)} → ${esc(d.to_date)}</span>`;
+}
+
+// 실제·실험실 공통 보드
+function renderBoard(el, store, { title, synthetic = false, onRetry = null, retryLabel = '다시 시도', loadError = null }) {
+  const row = latestRow(store);
+  const st = store.status;
+  const stale = st?.freshness === 'stale';
+  const badge = loadError ? '<span class="badge stale">기록을 읽지 못함</span>'
+    : !st ? '<span class="badge">첫 조회 전</span>'
+    : stale ? `<span class="badge stale">오래된 값 · ${esc(st.error_code)}</span>`
+    : '<span class="badge fresh">최신 · 정상</span>';
+  let html = `<div class="board-top"><span class="name">${esc(title)}</span>${badge}</div>`;
+  if (row) {
+    html += `<div class="value ${stale ? 'is-stale' : ''}"><span data-role="value">${fmt(row.normalized_value)}</span><span class="unit" data-role="unit">${esc(row.unit)}</span>${stale ? '<span class="stale-tag">마지막 정상값 · 오래된 값</span>' : ''}</div>`;
+    html += `<div>${deltaHtml(computeDelta(store))}</div>`;
+    html += `<dl class="meta">
+      <dt>출처</dt><dd><a href="${esc(row.source_url)}" rel="noopener" target="_blank">${esc(row.source_name)}</a></dd>
+      <dt>출처 시각</dt><dd data-role="source-time">${row.source_time ? esc(kstDateTime(row.source_time)) : '원천이 시각을 주지 않음'}</dd>
+      <dt>조회 시각</dt><dd data-role="fetched-at">${esc(kstDateTime(row.fetched_at))}</dd>
+      <dt>기준 시간대</dt><dd>${esc(row.record_timezone)} (기록 날짜 ${esc(row.record_date)})</dd>
+      <dt>저장된 날짜 수</dt><dd>${store.rows.length}일</dd>
+    </dl>`;
+  } else if (!loadError) {
+    html += `<p class="empty" style="margin-top:14px">${synthetic ? '초기화 상태 · 저장된 행 0개' : '아직 첫 실제 조회 전입니다. 기록이 생기면 값·단위·출처·시각이 여기에 표시됩니다.'}</p>`;
+    if (!synthetic) html += '<dl class="meta"><dt>기준 시간대</dt><dd>Asia/Seoul</dd></dl>';
+  }
+  if (loadError) {
+    html += `<div class="alert"><b>기록 파일을 불러오지 못했습니다</b>
+      <p>${esc(loadError)}</p><p class="next">인터넷 연결을 확인한 뒤 다시 시도하세요.</p>
+      <div class="row" style="margin-top:10px"><button class="primary" data-retry>${esc(retryLabel)}</button></div></div>`;
+  } else if (stale) {
+    const g = ERROR_GUIDE[st.error_code];
+    const la = store.last_attempt;
+    html += `<div class="alert" data-role="alert" data-error="${esc(st.error_code)}">
+      <b>${esc(g.title)}</b>
+      <p>${esc(g.why)}</p>
+      <p class="next">${esc(g.next)}</p>
+      <p>실패한 시각 ${esc(kstDateTime(la?.at) ?? '—')}${la?.detail ? ` · ${esc(la.detail)}` : ''}</p>
+      ${row ? '' : '<p>아직 저장된 정상값이 없습니다.</p>'}
+      ${onRetry ? `<div class="row" style="margin-top:10px"><button class="primary" data-retry>${esc(retryLabel)}</button></div>` : ''}
+    </div>`;
+  }
+  el.innerHTML = html;
+  const btn = el.querySelector('[data-retry]');
+  if (btn && onRetry) btn.addEventListener('click', onRetry);
+}
+
+/* ---------- 실제 기록 ---------- */
+let rawCache = {};
+async function loadLive() {
+  let board;
+  try {
+    const res = await fetch(`data/board.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    board = await res.json();
+  } catch (e) {
+    renderBoard($('#live-board'), emptyStore(), { title: '현대차 · 005380', loadError: String(e.message || e), onRetry: loadLive, retryLabel: '다시 불러오기' });
+    return;
+  }
+  renderBoard($('#live-board'), board, {
+    title: '현대차 · 005380 · 현재가',
+    onRetry: loadLive,
+    retryLabel: '다시 시도 (최신 기록 다시 읽기)',
+  });
+  if (board.status?.freshness === 'stale') {
+    const alert = $('#live-board .alert');
+    alert?.insertAdjacentHTML('beforeend', '<p class="note">다시 시도는 저장소의 최신 조회 결과를 다시 읽습니다. 새 조회는 다음 예약 시각(평일 15:40 KST)이나 저장소 관리자의 수동 실행으로 이뤄집니다.</p>');
+  }
+  renderDaily(board);
+  renderAttempts(board);
+  await renderCheck(board);
+}
+
+function renderDaily(board) {
+  if (!board.rows.length) return;
+  const rows = board.rows.map((r, i) => {
+    const prev = board.rows[i - 1];
+    const d = prev && prev.unit === r.unit ? computeDelta({ rows: [prev, r] }) : null;
+    const dTxt = d ? `${d.diff > 0 ? '+' : ''}${fmt(d.diff)} (${d.pct > 0 ? '+' : ''}${d.pct?.toFixed(2)}%)` : '—';
+    return `<tr>
+      <td>${esc(r.record_date)}</td>
+      <td class="num">${fmt(r.normalized_value)}</td>
+      <td>${esc(r.unit)}</td>
+      <td class="num">${dTxt}</td>
+      <td>${esc(kstDateTime(r.source_time) ?? '—')}</td>
+      <td>${esc(kstDateTime(r.fetched_at))}</td>
+    </tr>`;
+  }).reverse().join('');
+  $('#daily-table').innerHTML = `<table><thead><tr><th>기록 날짜</th><th>값</th><th>단위</th><th>어제 대비</th><th>출처 시각</th><th>조회 시각</th></tr></thead><tbody>${rows}</tbody></table>
+    <details style="margin-top:14px"><summary class="note" style="cursor:pointer">과정 기록 칸에 옮겨 적을 값 보기</summary>
+    <table style="margin-top:8px"><thead><tr><th>날짜</th><th>원천 URL</th><th>관측 시각(RFC 3339)</th><th>값</th><th>단위</th></tr></thead><tbody>
+    ${board.rows.map((r) => `<tr><td>${esc(r.record_date)}</td><td class="mono">${esc(r.source_url)}</td><td class="mono">${esc(kstRfc3339(r.source_time))}</td><td class="mono">${r.normalized_value}</td><td class="mono">${esc(r.unit)}</td></tr>`).join('')}
+    </tbody></table></details>`;
+}
+
+function renderAttempts(board) {
+  const list = board.attempts ?? [];
+  if (!list.length) return;
+  $('#attempt-table').innerHTML = `<table><thead><tr><th>시각</th><th>결과</th><th>상세</th></tr></thead><tbody>${
+    list.slice(0, 10).map((a) => `<tr><td>${esc(kstDateTime(a.at))}</td><td>${a.ok ? '<span class="pass">정상</span>' : `<span class="fail">${esc(ERROR_GUIDE[a.error_code]?.title ?? a.error_code)}</span>`}</td><td>${esc(a.detail ?? (a.http_status ? `HTTP ${a.http_status}` : ''))}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+
+async function renderCheck(board) {
+  const row = latestRow(board);
+  if (!row) return;
+  let raw = rawCache[row.record_date];
+  if (!raw) {
+    try {
+      const res = await fetch(`data/raw/${row.record_date}.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok) raw = rawCache[row.record_date] = await res.json();
+    } catch { /* 원자료 없음 */ }
+  }
+  const facts = raw ? rawFacts(raw.body) : null;
+  const shown = {
+    value: Number($('#live-board [data-role="value"]')?.textContent.replace(/[^0-9.-]/g, '')),
+    unit: $('#live-board [data-role="unit"]')?.textContent,
+    time: $('#live-board [data-role="source-time"]')?.textContent,
+  };
+  const lines = [
+    ['값', facts ? fmt(facts.price) : '원자료 없음', fmt(row.normalized_value), fmt(shown.value),
+      facts && facts.price === row.normalized_value && row.normalized_value === shown.value],
+    ['단위', facts ? esc(facts.currency) : '—', esc(row.unit), esc(shown.unit),
+      facts && facts.currency === row.unit && row.unit === shown.unit],
+    ['출처 시각', facts ? esc(kstDateTime(facts.time)) : '—', esc(kstDateTime(row.source_time)), esc(shown.time),
+      facts && facts.time === row.source_time && kstDateTime(row.source_time) === shown.time],
+  ];
+  $('#check-table').innerHTML = `<table><thead><tr><th>항목</th><th>원자료</th><th>저장값</th><th>화면값</th><th>일치</th></tr></thead><tbody>${
+    lines.map(([k, a, b, c, ok]) => `<tr><td>${k}</td><td>${a}</td><td>${b}</td><td>${c}</td><td class="${ok ? 'pass' : 'fail'}">${ok ? '일치' : '불일치'}</td></tr>`).join('')
+  }</tbody></table>
+  <p class="note">원자료: <a href="data/raw/${esc(row.record_date)}.json">data/raw/${esc(row.record_date)}.json</a> (${raw ? `조회 ${esc(kstDateTime(raw.fetched_at))}, HTTP ${raw.http_status}, 원천 시간대 ${esc(facts?.exchange_timezone)}` : '파일 없음'}) · 저장값: <a href="data/board.json">data/board.json</a></p>`;
+}
+
+/* ---------- 실패 재생 실험실 ---------- */
+const FIX = {};
+const FIX_NAMES = ['normal-d1-a', 'normal-d1-b', 'normal-d2', 'timeout', 'auth-401', 'rate-429', 'offline', 'schema-break', 'recover-d2'];
+let lab = emptyStore();
+let busy = false;
+const logLines = [];
+const log = (t) => { logLines.unshift(t); $('#lab-log').innerHTML = logLines.slice(0, 8).map(esc).join('<br>'); };
+
+async function loadFixtures() {
+  await Promise.all(FIX_NAMES.map(async (n) => { FIX[n] = await (await fetch(`fixtures/${n}.json`)).json(); }));
+}
+
+// 전송 흉내: 제한시간보다 늦으면 timeout
+function simulate(f) {
+  const { mode, delay_ms: delay, deadline_ms: deadline } = f.transport;
+  const wait = Math.min(delay, deadline);
+  return new Promise((resolve) => setTimeout(() => {
+    if (mode === 'timeout' || delay > deadline) resolve({ transport: { mode: 'timeout' }, payload: null });
+    else resolve({ transport: f.transport, payload: f.payload });
+  }, wait));
+}
+
+const snap = (s) => ({
+  freshness: s.status?.freshness ?? '—', error_code: s.status?.error_code ?? '—', row_count: s.rows.length,
+  stored_value: latestRow(s)?.normalized_value ?? null, delta: computeDelta(s)?.diff ?? null,
+});
+const results = [];
+function record(label, exp) {
+  const got = snap(lab);
+  const keys = ['freshness', 'error_code', 'row_count', 'stored_value', 'delta'];
+  const ok = keys.every((k) => got[k] === exp[k]);
+  results.unshift({ label, got, exp, ok });
+  renderResults();
+  return ok;
+}
+function renderResults() {
+  const cell = (g, e) => (g === e ? esc(String(g)) : `<span class="fail">${esc(String(g))} ≠ ${esc(String(e))}</span>`);
+  $('#lab-result').innerHTML = `<table><thead><tr><th>재생</th><th>상태</th><th>오류코드</th><th>행 수</th><th>저장값</th><th>변화</th><th>예상과 일치</th></tr></thead><tbody>${
+    results.slice(0, 30).map((r) => `<tr><td>${esc(r.label)}</td><td>${cell(r.got.freshness, r.exp.freshness)}</td><td>${cell(r.got.error_code, r.exp.error_code)}</td><td class="num">${cell(r.got.row_count, r.exp.row_count)}</td><td class="num">${cell(r.got.stored_value, r.exp.stored_value)}</td><td class="num">${cell(r.got.delta, r.exp.delta)}</td><td class="${r.ok ? 'pass' : 'fail'}">${r.ok ? 'PASS' : 'FAIL'}</td></tr>`).join('')
+  }</tbody></table>`;
+}
+
+function renderLab() {
+  renderBoard($('#lab-board'), lab, {
+    title: '합성 지표 · aleph-demo-index',
+    synthetic: true,
+    onRetry: () => run(() => play('recover-d2')),
+    retryLabel: '다시 시도 (T04-RECOVER-D2 재생)',
+  });
+}
+
+async function play(name) {
+  const f = FIX[name];
+  log(`${f.fixture_id} 재생 중… (${f.description_ko})`);
+  const outcome = await simulate(f);
+  lab = applyOutcome(lab, outcome, identityNormalize, f.virtual_now);
+  renderLab();
+  const ok = record(f.fixture_id, f.expected);
+  log(`${f.fixture_id} → ${lab.status.freshness}/${lab.status.error_code}, 행 ${lab.rows.length}개 ${ok ? '· 예상과 일치' : '· 예상과 다름'}`);
+  return ok;
+}
+function reset() { lab = emptyStore(); renderLab(); log('초기화: 저장된 행 0개'); }
+
+async function run(fn) {
+  if (busy) return;
+  busy = true;
+  document.querySelectorAll('#lab button').forEach((b) => { b.disabled = true; });
+  try { await fn(); } finally {
+    busy = false;
+    document.querySelectorAll('#lab button').forEach((b) => { b.disabled = false; });
+  }
+}
+
+const seqNormal = async () => { reset(); await play('normal-d1-a'); await play('normal-d1-b'); await play('normal-d2'); };
+const seqFail = async (name) => { reset(); await play('normal-d1-a'); await play('normal-d1-b'); await play(name); };
+const seqRecover = async () => { reset(); await play('normal-d1-a'); await play('normal-d1-b'); await play('timeout'); log('실패 상태에서 다시 시도 → RECOVER-D2'); await play('recover-d2'); };
+async function clockTest() {
+  reset();
+  const mk = (iso, v) => ({
+    transport: { mode: 'http', status: 200, headers: {} },
+    payload: { signal_id: 'aleph-demo-index', normalized_value: v, unit: 'pt', source_name: '합성 시계', source_url: 'https://fixtures.aleph.invalid/t04/clock', source_time: null, fetched_at: iso, record_timezone: 'Asia/Seoul', record_date: kstDate(iso) },
+  });
+  const steps = [['2026-08-23T15:10:00Z', 100, 1, null], ['2026-08-24T03:00:00Z', 102, 1, null], ['2026-08-24T14:50:00Z', 105, 1, null], ['2026-08-24T15:05:00Z', 120, 2, 15]];
+  for (const [iso, v, rows, delta] of steps) {
+    lab = applyOutcome(lab, mk(iso, v), identityNormalize, iso);
+    renderLab();
+    record(`합성 시계 ${kstDateTime(iso)}`, { freshness: 'fresh', error_code: 'none', row_count: rows, stored_value: v, delta });
+    log(`${kstDateTime(iso)} 성공 → 기록 날짜 ${kstDate(iso)}, 행 ${lab.rows.length}개`);
+  }
+}
+async function allTests() {
+  results.length = 0;
+  await seqNormal();
+  for (const n of ['timeout', 'auth-401', 'rate-429', 'offline', 'schema-break']) await seqFail(n);
+  await seqRecover();
+  await clockTest();
+  const bad = results.filter((r) => !r.ok).length;
+  log(`전체 검사 끝: ${results.length}건 중 ${results.length - bad}건 일치`);
+}
+
+document.querySelectorAll('[data-fx]').forEach((b) => b.addEventListener('click', () => run(() => play(b.dataset.fx))));
+document.querySelectorAll('[data-fail]').forEach((b) => b.addEventListener('click', () => run(() => seqFail(b.dataset.fail))));
+$('[data-seq="normal"]').addEventListener('click', () => run(seqNormal));
+$('[data-seq="recover"]').addEventListener('click', () => run(seqRecover));
+$('[data-act="reset"]').addEventListener('click', () => run(async () => reset()));
+$('[data-act="clock"]').addEventListener('click', () => run(clockTest));
+$('[data-act="all"]').addEventListener('click', () => run(allTests));
+
+loadLive();
+loadFixtures().then(renderLab).catch((e) => { $('#lab-board').innerHTML = `<p class="empty">fixture를 불러오지 못했습니다: ${esc(e.message)}</p>`; });
+</script>
+</body>
+</html>

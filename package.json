@@ -1,0 +1,9 @@
+{
+  "name": "hyundai-board",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "fetch": "node scripts/fetch-daily.js",
+    "test": "node tests/run.js"
+  }
+}
