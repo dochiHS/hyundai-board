@@ -6,7 +6,9 @@ import { normalizeHistory } from '../chart-data.js';
 
 const DATA_DIR = process.env.T04_DATA_DIR ? new URL(`file://${process.env.T04_DATA_DIR.replace(/\/?$/, '/')}`) : new URL('../data/', import.meta.url);
 const OUT = new URL('history.json', DATA_DIR);
-const SOURCE = `https://query1.finance.yahoo.com/v8/finance/chart/${HYUNDAI.symbol}?range=max&interval=1d`;
+// range=max 는 Yahoo가 월봉으로 바꿔 보내므로, 기간(2000-01-01 ~ 지금)을 직접 지정해 일봉을 받습니다.
+const SOURCE_BASE = `https://query1.finance.yahoo.com/v8/finance/chart/${HYUNDAI.symbol}?interval=1d&period1=946684800`;
+const SOURCE = `${SOURCE_BASE}&period2=${Math.floor(Date.now() / 1000)}`;
 const URL_ = process.env.T04_TEST_URL || SOURCE;
 
 async function main() {

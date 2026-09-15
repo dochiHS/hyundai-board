@@ -8,6 +8,7 @@ export function normalizeHistory(json) {
   const q = r?.indicators?.quote?.[0];
   if (!Array.isArray(ts) || !q) throw new Error('timestamp 또는 quote 없음');
   if (r.meta?.currency && r.meta.currency !== 'KRW') throw new Error(`통화 불일치 ${r.meta.currency}`);
+  if (r.meta?.dataGranularity && r.meta.dataGranularity !== '1d') throw new Error(`일봉이 아님 (${r.meta.dataGranularity})`);
   const byDate = new Map();
   ts.forEach((t, i) => {
     const o = q.open?.[i]; const h = q.high?.[i]; const l = q.low?.[i]; const c = q.close?.[i]; const v = q.volume?.[i];

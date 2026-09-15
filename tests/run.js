@@ -159,6 +159,9 @@ const yahoo = (price, t, extra = {}) => ({
   check('년봉 묶기', y.length === 2 && y[0].time === '2026-01-01' && y[0].close === 152 && y[1].open === 160);
   const ma = movingAverage(aggregate(bars, 'day'), 5);
   check('5일 이동평균', ma.length === 3 && ma[0].value === (102 + 112 + 122 + 132 + 142) / 5);
+  let threw = false;
+  try { normalizeHistory({ chart: { result: [{ ...json.chart.result[0], meta: { currency: 'KRW', dataGranularity: '1mo' } }] } }); } catch { threw = true; }
+  check('월봉 응답은 일봉으로 저장하지 않음', threw);
   const ch = changeOf(w[1]);
   check('봉 등락 계산', ch.diff === 142 - 122);
 }
