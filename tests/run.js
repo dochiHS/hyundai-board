@@ -137,5 +137,31 @@ const yahoo = (price, t, extra = {}) => ({
   await rm(dir, { recursive: true, force: true });
 }
 
+// 7. 차트 데이터 (합성 일봉)
+{
+  const { normalizeHistory, aggregate, movingAverage, changeOf } = await import('../chart-data.js');
+  const day = (iso) => Date.parse(`${iso}T00:00:00Z`) / 1000; // KST 09:00
+  const ts = [day('2026-09-07'), day('2026-09-08'), day('2026-09-09'), day('2026-09-14'), day('2026-09-15'), day('2026-10-01'), day('2027-01-04')];
+  const json = { chart: { result: [{ meta: { currency: 'KRW' }, timestamp: [...ts, day('2026-09-10')], indicators: { quote: [{
+    open: [100, 110, 120, 130, 140, 150, 160, null],
+    high: [105, 115, 125, 135, 145, 155, 165, null],
+    low: [95, 105, 115, 125, 135, 145, 155, null],
+    close: [102, 112, 122, 132, 142, 152, 162, null],
+    volume: [1, 2, 3, 4, 5, 6, 7, null],
+  }] } }] } };
+  const bars = normalizeHistory(json);
+  check('차트 일봉 정리 (빈 칸 제외)', bars.length === 7 && bars[0][0] === '2026-09-07');
+  const w = aggregate(bars, 'week');
+  check('주봉 묶기', w.length === 4 && w[0].time === '2026-09-07' && w[0].open === 100 && w[0].close === 122 && w[0].high === 125 && w[0].low === 95 && w[0].volume === 6, JSON.stringify(w[0]));
+  const m = aggregate(bars, 'month');
+  check('월봉 묶기', m.length === 3 && m[0].close === 142 && m[1].prevClose === 142);
+  const y = aggregate(bars, 'year');
+  check('년봉 묶기', y.length === 2 && y[0].time === '2026-01-01' && y[0].close === 152 && y[1].open === 160);
+  const ma = movingAverage(aggregate(bars, 'day'), 5);
+  check('5일 이동평균', ma.length === 3 && ma[0].value === (102 + 112 + 122 + 132 + 142) / 5);
+  const ch = changeOf(w[1]);
+  check('봉 등락 계산', ch.diff === 142 - 122);
+}
+
 console.log(`\n합계 PASS ${pass} · FAIL ${fail}`);
 process.exit(fail ? 1 : 0);

@@ -7,6 +7,9 @@
 | 파일 | 역할 |
 |---|---|
 | `index.html` | 공개 화면 (실제 기록 + 실패 재생 실험실) |
+| `chart-data.js` | 차트용 함수: 일봉 정리 · 주/월/년 봉 묶기 · 이동평균 |
+| `scripts/fetch-history.js` | 차트용 과거 일봉 받기 → `data/history.json` (실패해도 기존 파일 유지, 일별 기록과 별개) |
+| `vendor/` | TradingView Lightweight Charts v4.2.3 (Apache-2.0) — 외부 CDN 없이 사용 |
 | `core.js` | 공통 로직: 정규화·형식 검사·일별 저장(같은 날짜는 갱신)·상태·어제 대비 계산 |
 | `scripts/fetch-daily.js` | 실제 조회. 비밀키 없이 Yahoo Finance 차트 응답을 받아 `data/`에 저장 |
 | `.github/workflows/daily.yml` | 평일 15:40 KST 자동 조회 + 수동 실행 |
@@ -26,7 +29,7 @@
 ## 로컬 확인
 
 ```bash
-node tests/run.js          # 검사 30건
+node tests/run.js          # 검사 36건
 bash scripts/secret-scan.sh
 node scripts/fetch-daily.js  # 실제 조회 1회 (data/ 갱신)
 ```

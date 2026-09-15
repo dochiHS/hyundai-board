@@ -61,6 +61,25 @@
   @media (max-width: 760px) { .lab-grid { grid-template-columns: 1fr; } .value { font-size: 38px; } }
   .group-label { font-size: 12px; color: var(--faint); margin: 12px 0 6px; }
   .copy { background: none; border: 1px solid var(--line); padding: 1px 7px; font-size: 12px; color: var(--muted); }
+  .chart-panel { padding: 16px 16px 12px; }
+  .chart-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .seg { display: inline-flex; border: 1px solid #3a3a40; border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: transparent; padding: 6px 16px; color: var(--muted); }
+  .seg button + button { border-left: 1px solid #3a3a40; }
+  .seg button[aria-selected="true"] { background: #2b2b30; color: var(--text); font-weight: 600; }
+  .ma-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+  .ma-legend label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+  .ma-legend input { accent-color: #888; margin: 0; }
+  .ma-legend .sw { width: 14px; height: 2px; border-radius: 1px; display: inline-block; }
+  .ma-legend .val { color: var(--text); font-variant-numeric: tabular-nums; }
+  .ohlc { margin: 12px 2px 8px; font-size: 13px; color: var(--muted); display: flex; gap: 4px 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; min-height: 20px; }
+  .ohlc b { color: var(--text); font-weight: 500; }
+  .ohlc .up { color: var(--up); } .ohlc .down { color: var(--down); }
+  .chart-box { height: 460px; position: relative; }
+  @media (max-width: 760px) { .chart-box { height: 340px; } .seg button { padding: 6px 13px; } }
+  .chart-foot { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--faint); margin-top: 8px; }
+  .chart-foot .up { color: var(--up); } .chart-foot .down { color: var(--down); }
+  .chart-table { margin-top: 6px; }
   footer { margin-top: 48px; color: var(--faint); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 16px; }
   footer p { margin: 4px 0; }
 </style>
@@ -76,6 +95,32 @@
     <h2>오늘의 값</h2>
     <p class="desc">평일 장 마감 뒤(15:40 KST) GitHub Actions가 한 번 조회해 저장합니다. 이 화면은 저장된 기록을 읽습니다.</p>
     <div class="panel" id="live-board"><p class="empty">불러오는 중…</p></div>
+  </section>
+
+  <section id="chart">
+    <h2>시세 차트</h2>
+    <p class="desc">일봉을 모아 주봉·월봉·년봉을 만듭니다. 휠·드래그로 확대·이동하고, 마우스를 올리면 그 봉의 시가·고가·저가·종가가 보입니다. 평일 장 마감 뒤 갱신되는 참고용 차트이며 아래 일별 기록과는 따로 저장됩니다.</p>
+    <div class="panel chart-panel">
+      <div class="chart-bar">
+        <div class="seg" role="tablist" aria-label="봉 단위">
+          <button role="tab" data-unit="day" aria-selected="true">일</button>
+          <button role="tab" data-unit="week" aria-selected="false">주</button>
+          <button role="tab" data-unit="month" aria-selected="false">월</button>
+          <button role="tab" data-unit="year" aria-selected="false">년</button>
+        </div>
+        <div class="ma-legend" id="ma-legend"></div>
+      </div>
+      <div class="ohlc" id="ohlc" aria-live="polite">차트 불러오는 중…</div>
+      <div id="chart-box" class="chart-box"></div>
+      <div class="chart-foot">
+        <span id="range-change"></span>
+        <span id="chart-source"></span>
+      </div>
+      <details class="chart-table">
+        <summary class="note">표로 보기 (최근 20개 봉)</summary>
+        <div class="scroll" id="candle-table"></div>
+      </details>
+    </div>
   </section>
 
   <section id="check">
@@ -136,14 +181,17 @@
   <footer>
     <p>데이터: Yahoo Finance 공개 차트 응답(005380.KS), 비밀키 없이 조회. 투자 판단용이 아닙니다.</p>
     <p>이 사이트는 로그인·쿠키·개인정보를 쓰지 않습니다. 실험실 자료: ALEPH T04 공개 합성 fixture.</p>
+    <p>차트: TradingView Lightweight Charts v4.2.3 (Apache-2.0, <a href="vendor/lightweight-charts.LICENSE">라이선스</a>) · 저장소에 함께 담아 외부 CDN 없이 동작합니다.</p>
   </footer>
 </div>
 
+<script src="vendor/lightweight-charts.standalone.production.js"></script>
 <script type="module">
 import {
   ERROR_GUIDE, kstDateTime, kstRfc3339, computeDelta, latestRow, emptyStore,
   applyOutcome, identityNormalize, rawFacts, kstDate,
 } from './core.js';
+import { aggregate, movingAverage, changeOf } from './chart-data.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -399,7 +447,152 @@ $('[data-act="reset"]').addEventListener('click', () => run(async () => reset())
 $('[data-act="clock"]').addEventListener('click', () => run(clockTest));
 $('[data-act="all"]').addEventListener('click', () => run(allTests));
 
+/* ---------- 시세 차트 ---------- */
+const CHART = { up: '#e66767', down: '#3987e5' };
+const MAS = [
+  { n: 5, color: '#199e70' },
+  { n: 20, color: '#c98500' },
+  { n: 60, color: '#d55181' },
+  { n: 120, color: '#9085e9' },
+];
+const UNIT_LABEL = { day: '일봉', week: '주봉', month: '월봉', year: '년봉' };
+const VISIBLE = { day: 120, week: 104, month: 120, year: Infinity };
+const chartState = { unit: 'day', history: null, candles: [], chart: null, candle: null, volume: null, ma: {}, maOn: { 5: true, 20: true, 60: true, 120: true } };
+const signed = (n, digits = 0) => `${n > 0 ? '+' : ''}${n.toLocaleString('ko-KR', { maximumFractionDigits: digits, minimumFractionDigits: digits })}`;
+const volFmt = (v) => (v >= 1e8 ? `${(v / 1e8).toFixed(2)}억` : v >= 1e4 ? `${Math.round(v / 1e4).toLocaleString('ko-KR')}만` : v.toLocaleString('ko-KR'));
+const periodLabel = (b, unit) => (unit === 'day' ? b.time
+  : unit === 'week' ? `${b.first_date} ~ ${b.last_date}`
+  : unit === 'month' ? b.time.slice(0, 7)
+  : `${b.time.slice(0, 4)}년 (${b.first_date} ~ ${b.last_date})`);
+
+function showOhlc(b) {
+  const el = $('#ohlc');
+  if (!b) { el.textContent = ''; return; }
+  const ch = changeOf(b);
+  const cls = ch ? (ch.diff > 0 ? 'up' : ch.diff < 0 ? 'down' : '') : '';
+  const chTxt = ch ? `<span class="${cls}">${ch.diff > 0 ? '▲' : ch.diff < 0 ? '▼' : '−'} ${signed(ch.diff)} (${signed(ch.pct, 2)}%)</span>` : '<span>이전 봉 없음</span>';
+  el.innerHTML = `<span>${esc(periodLabel(b, chartState.unit))}</span>
+    <span>시 <b>${fmt(b.open)}</b></span><span>고 <b>${fmt(b.high)}</b></span>
+    <span>저 <b>${fmt(b.low)}</b></span><span>종 <b>${fmt(b.close)}</b></span>
+    ${chTxt}<span>거래량 <b>${volFmt(b.volume)}</b></span>`;
+}
+
+function showMaValues(time) {
+  MAS.forEach(({ n }) => {
+    const v = chartState.maValues?.[n]?.get(time);
+    const el = document.getElementById(`ma-val-${n}`);
+    if (el) el.textContent = v != null ? fmt(Math.round(v)) : '—';
+  });
+}
+
+function buildMaLegend() {
+  $('#ma-legend').innerHTML = MAS.map(({ n, color }) => `<label><input type="checkbox" data-ma="${n}" ${chartState.maOn[n] ? 'checked' : ''}><span class="sw" style="background:${color}"></span>${n}<span class="val" id="ma-val-${n}">—</span></label>`).join('');
+  $('#ma-legend').querySelectorAll('input').forEach((i) => i.addEventListener('change', () => {
+    const n = Number(i.dataset.ma);
+    chartState.maOn[n] = i.checked;
+    chartState.ma[n]?.applyOptions({ visible: i.checked });
+  }));
+}
+
+function updateRangeChange() {
+  const { chart, candles } = chartState;
+  const r = chart.timeScale().getVisibleLogicalRange();
+  if (!r || !candles.length) return;
+  const a = candles[Math.max(0, Math.ceil(r.from))];
+  const b = candles[Math.min(candles.length - 1, Math.floor(r.to))];
+  if (!a || !b || a === b) { $('#range-change').textContent = ''; return; }
+  const base = a.prevClose ?? a.open;
+  const diff = b.close - base;
+  const pct = (diff / base) * 100;
+  const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
+  $('#range-change').innerHTML = `보이는 구간 ${esc(a.first_date)} ~ ${esc(b.last_date)} · <span class="${cls}">${signed(diff)}원 (${signed(pct, 2)}%)</span>`;
+}
+
+function renderCandleTable() {
+  const rows = chartState.candles.slice(-20).reverse();
+  $('#candle-table').innerHTML = `<table><thead><tr><th>기간</th><th>시가</th><th>고가</th><th>저가</th><th>종가</th><th>등락률</th><th>거래량</th></tr></thead><tbody>${
+    rows.map((b) => { const ch = changeOf(b); return `<tr><td>${esc(periodLabel(b, chartState.unit))}</td><td class="num">${fmt(b.open)}</td><td class="num">${fmt(b.high)}</td><td class="num">${fmt(b.low)}</td><td class="num">${fmt(b.close)}</td><td class="num">${ch ? `${signed(ch.pct, 2)}%` : '—'}</td><td class="num">${volFmt(b.volume)}</td></tr>`; }).join('')
+  }</tbody></table>`;
+}
+
+function setUnit(unit) {
+  chartState.unit = unit;
+  document.querySelectorAll('[data-unit]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.unit === unit)));
+  const candles = aggregate(chartState.history.bars, unit);
+  chartState.candles = candles;
+  chartState.byTime = new Map(candles.map((b) => [b.time, b]));
+  chartState.candle.setData(candles.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
+  chartState.volume.setData(candles.map((b) => ({
+    time: b.time, value: b.volume,
+    color: (b.close >= b.open ? CHART.up : CHART.down) + '66',
+  })));
+  chartState.maValues = {};
+  MAS.forEach(({ n }) => {
+    const line = movingAverage(candles, n);
+    chartState.ma[n].setData(line);
+    chartState.maValues[n] = new Map(line.map((p) => [p.time, p.value]));
+  });
+  const total = candles.length;
+  const show = Math.min(total, VISIBLE[unit]);
+  chartState.chart.timeScale().setVisibleLogicalRange({ from: total - show - 0.5, to: total + 2 });
+  const last = candles[total - 1];
+  showOhlc(last);
+  showMaValues(last.time);
+  renderCandleTable();
+  updateRangeChange();
+}
+
+async function loadChart() {
+  if (!window.LightweightCharts) { $('#ohlc').textContent = '차트 도구를 불러오지 못했습니다. 새로고침해 보세요.'; return; }
+  let history;
+  try {
+    const res = await fetch(`data/history.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (res.status === 404) throw new Error('아직 차트용 시세를 받지 않았습니다 (다음 자동 조회 때 생깁니다)');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    history = await res.json();
+    if (!Array.isArray(history.bars) || history.bars.length < 2) throw new Error('시세 파일 형식이 약속과 다릅니다');
+  } catch (e) {
+    $('#ohlc').textContent = `차트를 표시할 수 없습니다: ${e.message}`;
+    $('#chart-box').style.height = '0';
+    return;
+  }
+  chartState.history = history;
+  const LWC = window.LightweightCharts;
+  const chart = LWC.createChart($('#chart-box'), {
+    autoSize: true,
+    layout: { background: { type: 'solid', color: '#17171a' }, textColor: '#9a978f', fontSize: 12, fontFamily: getComputedStyle(document.body).fontFamily },
+    grid: { vertLines: { color: '#212125' }, horzLines: { color: '#212125' } },
+    rightPriceScale: { borderColor: '#2a2a2f' },
+    timeScale: { borderColor: '#2a2a2f', rightOffset: 2, minBarSpacing: 0.5 },
+    crosshair: { mode: LWC.CrosshairMode.Normal, vertLine: { color: '#6d6a64', labelBackgroundColor: '#2b2b30' }, horzLine: { color: '#6d6a64', labelBackgroundColor: '#2b2b30' } },
+    localization: { locale: 'ko-KR', dateFormat: 'yyyy-MM-dd', priceFormatter: (p) => Math.round(p).toLocaleString('ko-KR') },
+  });
+  chartState.chart = chart;
+  chartState.candle = chart.addCandlestickSeries({
+    upColor: CHART.up, downColor: CHART.down, borderUpColor: CHART.up, borderDownColor: CHART.down,
+    wickUpColor: CHART.up, wickDownColor: CHART.down, priceLineColor: '#6d6a64',
+  });
+  chartState.candle.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.26 } });
+  chartState.volume = chart.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false });
+  chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+  MAS.forEach(({ n, color }) => {
+    chartState.ma[n] = chart.addLineSeries({ color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, visible: chartState.maOn[n] });
+  });
+  buildMaLegend();
+  chart.subscribeCrosshairMove((param) => {
+    const b = param.time ? chartState.byTime.get(param.time) : null;
+    const last = chartState.candles[chartState.candles.length - 1];
+    showOhlc(b || last);
+    showMaValues((b || last).time);
+  });
+  chart.timeScale().subscribeVisibleLogicalRangeChange(updateRangeChange);
+  document.querySelectorAll('[data-unit]').forEach((btn) => btn.addEventListener('click', () => setUnit(btn.dataset.unit)));
+  $('#chart-source').innerHTML = `출처 ${esc(history.source_name)} · 시세 받은 시각 ${esc(kstDateTime(history.fetched_at))} · 차트 <a href="https://www.tradingview.com/" rel="noopener" target="_blank">TradingView Lightweight Charts</a>`;
+  setUnit('day');
+}
+
 loadLive();
+loadChart();
 loadFixtures().then(renderLab).catch((e) => { $('#lab-board').innerHTML = `<p class="empty">fixture를 불러오지 못했습니다: ${esc(e.message)}</p>`; });
 </script>
 </body>
