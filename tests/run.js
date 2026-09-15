@@ -87,15 +87,15 @@ for (const [name, c] of FAILS) {
   check('C21 다음 KST 날짜 → 2행', s.rows.length === 2 && s.rows[1].record_date === '2026-09-16', s.rows.map((r) => r.record_date).join(','));
 }
 
-// 5. Yahoo 응답 정규화 (합성 응답)
+// 5. Yahoo 응답 정규화 (합성 응답, 1789453800 = 2026-09-15 15:30 KST)
 const yahoo = (price, t, extra = {}) => ({
   chart: { result: [{ meta: { currency: 'KRW', symbol: '005380.KS', exchangeTimezoneName: 'Asia/Seoul', regularMarketPrice: price, regularMarketTime: t, ...extra } }], error: null },
 });
 {
-  const r = normalizeYahoo(yahoo(123450, 1757916000), '2026-09-15T06:40:00.000Z');
-  check('C10 정규화 값·단위·시각', r.normalized_value === 123450 && r.unit === 'KRW' && r.source_time === new Date(1757916000 * 1000).toISOString() && r.record_date === '2026-09-15');
+  const r = normalizeYahoo(yahoo(123450, 1789453800), '2026-09-15T06:40:00.000Z');
+  check('C10 정규화 값·단위·시각', r.normalized_value === 123450 && r.unit === 'KRW' && r.source_time === new Date(1789453800 * 1000).toISOString() && r.record_date === '2026-09-15');
   let threw = false;
-  try { normalizeYahoo(yahoo('123450', 1757916000), 'x'); } catch { threw = true; }
+  try { normalizeYahoo(yahoo('123450', 1789453800), 'x'); } catch { threw = true; }
   check('C16 가격이 문자열이면 형식 오류', threw);
 }
 
@@ -107,7 +107,7 @@ const yahoo = (price, t, extra = {}) => ({
     if (mode === 'slow') { setTimeout(() => { res.end('{}'); }, 1500); return; }
     if (mode === '401') { res.writeHead(401, { 'content-type': 'application/json' }); res.end('{"e":1}'); return; }
     if (mode === '429') { res.writeHead(429, { 'content-type': 'application/json', 'retry-after': '60' }); res.end('{"e":1}'); return; }
-    const body = mode === 'schema' ? yahoo(String(price), 1757916000) : yahoo(price, Math.floor(Date.now() / 1000));
+    const body = mode === 'schema' ? yahoo(String(price), 1789453800) : yahoo(price, Math.floor(Date.now() / 1000));
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify(body));
   });

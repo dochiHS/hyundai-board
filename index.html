@@ -143,7 +143,7 @@
 
   <section id="lab">
     <h2>실패 재생 실험실 <span class="badge synthetic">합성 시험값</span></h2>
-    <p class="desc">ALEPH 공개 fixture(v1.1.0, 9종)로 저장·실패·복구를 재생합니다. 여기 값(100·105·120 pt)은 가짜이며 위의 실제 기록과 섞이지 않습니다. 실제 조회와 같은 저장 함수(<code>core.js</code>)를 씁니다.</p>
+    <p class="desc">ALEPH 공개 fixture(v1.1.0, 9종)로 저장·실패·복구를 재생합니다. 이 실험실의 날짜·시각(2026-08-24 ~ 08-25)은 fixture 파일에 고정된 <b>가상 시각</b>이며 실제 조회 시각이 아닙니다. 여기 값(100·105·120 pt)은 가짜이며 위의 실제 기록과 섞이지 않습니다. 실제 조회와 같은 저장 함수(<code>core.js</code>)를 씁니다.</p>
     <div class="lab-grid">
       <div class="panel">
         <div class="group-label">순서대로 재생</div>
@@ -223,9 +223,9 @@ function renderBoard(el, store, { title, synthetic = false, onRetry = null, retr
     html += `<div>${deltaHtml(computeDelta(store))}</div>`;
     html += `<dl class="meta">
       <dt>출처</dt><dd><a href="${esc(row.source_url)}" rel="noopener" target="_blank">${esc(row.source_name)}</a></dd>
-      <dt>출처 시각</dt><dd data-role="source-time">${row.source_time ? esc(kstDateTime(row.source_time)) : '원천이 시각을 주지 않음'}</dd>
-      <dt>조회 시각</dt><dd data-role="fetched-at">${esc(kstDateTime(row.fetched_at))}</dd>
-      <dt>기준 시간대</dt><dd>${esc(row.record_timezone)} (기록 날짜 ${esc(row.record_date)})</dd>
+      <dt>${synthetic ? '가상 출처 시각' : '출처 시각'}</dt><dd data-role="source-time">${row.source_time ? esc(kstDateTime(row.source_time)) : '원천이 시각을 주지 않음'}</dd>
+      <dt>${synthetic ? '가상 조회 시각' : '조회 시각'}</dt><dd data-role="fetched-at">${esc(kstDateTime(row.fetched_at))}</dd>
+      <dt>기준 시간대</dt><dd>${esc(row.record_timezone)} (${synthetic ? '가상 기록 날짜' : '기록 날짜'} ${esc(row.record_date)})</dd>
       <dt>저장된 날짜 수</dt><dd>${store.rows.length}일</dd>
     </dl>`;
   } else if (!loadError) {
@@ -243,7 +243,7 @@ function renderBoard(el, store, { title, synthetic = false, onRetry = null, retr
       <b>${esc(g.title)}</b>
       <p>${esc(g.why)}</p>
       <p class="next">${esc(g.next)}</p>
-      <p>실패한 시각 ${esc(kstDateTime(la?.at) ?? '—')}${la?.detail ? ` · ${esc(la.detail)}` : ''}</p>
+      <p>${synthetic ? '가상 실패 시각' : '실패한 시각'} ${esc(kstDateTime(la?.at) ?? '—')}${la?.detail ? ` · ${esc(la.detail)}` : ''}</p>
       ${row ? '' : '<p>아직 저장된 정상값이 없습니다.</p>'}
       ${onRetry ? `<div class="row" style="margin-top:10px"><button class="primary" data-retry>${esc(retryLabel)}</button></div>` : ''}
     </div>`;
@@ -425,8 +425,8 @@ async function clockTest() {
   for (const [iso, v, rows, delta] of steps) {
     lab = applyOutcome(lab, mk(iso, v), identityNormalize, iso);
     renderLab();
-    record(`합성 시계 ${kstDateTime(iso)}`, { freshness: 'fresh', error_code: 'none', row_count: rows, stored_value: v, delta });
-    log(`${kstDateTime(iso)} 성공 → 기록 날짜 ${kstDate(iso)}, 행 ${lab.rows.length}개`);
+    record(`합성 시계 · 가상 ${kstDateTime(iso)}`, { freshness: 'fresh', error_code: 'none', row_count: rows, stored_value: v, delta });
+    log(`가상 ${kstDateTime(iso)} 성공 → 가상 기록 날짜 ${kstDate(iso)}, 행 ${lab.rows.length}개`);
   }
 }
 async function allTests() {
