@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-09-16T00:55:10.847Z",
+  "fetched_at": "2026-09-16T06:53:54.875Z",
   "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d",
   "http_status": 200,
   "body": {
@@ -13,21 +13,21 @@
             "fullExchangeName": "KSE",
             "instrumentType": "EQUITY",
             "firstTradeDate": 946944000,
-            "regularMarketTime": 1789518910,
+            "regularMarketTime": 1789540229,
             "hasPrePostMarketData": false,
             "gmtoffset": 32400,
             "timezone": "KST",
             "exchangeTimezoneName": "Asia/Seoul",
-            "regularMarketPrice": 361000,
-            "regularMarketChangePercent": -1.635,
-            "fulldayPrice": 361000,
-            "fulldayChange": -6000,
-            "fulldayChangePercent": -1.635,
+            "regularMarketPrice": 362000,
+            "regularMarketChangePercent": -1.362,
+            "fulldayPrice": 362000,
+            "fulldayChange": -5000,
+            "fulldayChangePercent": -1.362,
             "fiftyTwoWeekHigh": 783000,
             "fiftyTwoWeekLow": 213000,
             "regularMarketDayHigh": 367000,
-            "regularMarketDayLow": 359500,
-            "regularMarketVolume": 109240,
+            "regularMarketDayLow": 359000,
+            "regularMarketVolume": 506887,
             "longName": "Hyundai Motor Company",
             "shortName": "HyundaiMtr",
             "chartPreviousClose": 388000,
@@ -78,20 +78,6 @@
           "indicators": {
             "quote": [
               {
-                "volume": [
-                  600281,
-                  524899,
-                  511452,
-                  287552,
-                  109240
-                ],
-                "low": [
-                  381500,
-                  378000,
-                  365500,
-                  366000,
-                  359500
-                ],
                 "high": [
                   392000,
                   384000,
@@ -106,12 +92,26 @@
                   366500,
                   365000
                 ],
+                "volume": [
+                  600281,
+                  524899,
+                  511452,
+                  287552,
+                  506887
+                ],
+                "low": [
+                  381500,
+                  378000,
+                  365500,
+                  366000,
+                  359000
+                ],
                 "close": [
                   389000,
                   382500,
                   371500,
                   367000,
-                  361000
+                  362000
                 ]
               }
             ],
@@ -122,7 +122,7 @@
                   382500,
                   371500,
                   367000,
-                  361000
+                  362000
                 ]
               }
             ]
