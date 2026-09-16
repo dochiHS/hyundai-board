@@ -1,11 +1,56 @@
 {
   "signal": {
-    "signal_id": "hyundai-motor-005380",
+    "signal_id": "hyundai-motor-005380-prev-close",
     "symbol": "005380.KS",
-    "source_name": "Yahoo Finance · 현대차(005380.KS)",
-    "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=1d&interval=1d"
+    "source_name": "Yahoo Finance 일봉 · 현대차(005380.KS) 전 거래일 종가",
+    "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d"
   },
+  "value_rule": "기록 날짜(KST) 이전 마지막 거래일의 정규장 종가 = 장 시작 전 멈춰 있는 가격",
   "rows": [
+    {
+      "id": "hyundai-motor-005380-prev-close:2026-09-16",
+      "signal_id": "hyundai-motor-005380-prev-close",
+      "normalized_value": 367000,
+      "unit": "KRW",
+      "source_name": "Yahoo Finance 일봉 · 현대차(005380.KS) 전 거래일 종가",
+      "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d",
+      "source_time": "2026-09-15T09:00:00+09:00",
+      "fetched_at": "2026-09-16T00:55:10.847Z",
+      "record_timezone": "Asia/Seoul",
+      "record_date": "2026-09-16"
+    }
+  ],
+  "status": {
+    "freshness": "fresh",
+    "error_code": "none"
+  },
+  "last_attempt": {
+    "at": "2026-09-16T00:55:10.847Z",
+    "ok": true,
+    "error_code": "none",
+    "detail": null,
+    "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d",
+    "http_status": 200
+  },
+  "attempts": [
+    {
+      "at": "2026-09-16T00:55:10.847Z",
+      "ok": true,
+      "error_code": "none",
+      "detail": null,
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d",
+      "http_status": 200
+    },
+    {
+      "at": "2026-09-15T07:07:10.686Z",
+      "ok": true,
+      "error_code": "none",
+      "detail": null,
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=1d&interval=1d",
+      "http_status": 200
+    }
+  ],
+  "legacy_rows": [
     {
       "id": "hyundai-motor-005380:2026-09-15",
       "signal_id": "hyundai-motor-005380",
@@ -17,28 +62,6 @@
       "fetched_at": "2026-09-15T07:07:10.686Z",
       "record_timezone": "Asia/Seoul",
       "record_date": "2026-09-15"
-    }
-  ],
-  "status": {
-    "freshness": "fresh",
-    "error_code": "none"
-  },
-  "last_attempt": {
-    "at": "2026-09-15T07:07:10.686Z",
-    "ok": true,
-    "error_code": "none",
-    "detail": null,
-    "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=1d&interval=1d",
-    "http_status": 200
-  },
-  "attempts": [
-    {
-      "at": "2026-09-15T07:07:10.686Z",
-      "ok": true,
-      "error_code": "none",
-      "detail": null,
-      "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=1d&interval=1d",
-      "http_status": 200
     }
   ]
 }
