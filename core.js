@@ -165,42 +165,64 @@ export const identityNormalize = (p) => {
   return p;
 };
 
-// Yahoo Finance chart 응답 → 정규화 값 (실제 조회용)
+// 실제 조회용: '장 시작 전 멈춰 있는 가격' = 전 거래일 정규장 종가
+// 5일치 일봉에서 기록 날짜(KST)보다 앞선 마지막 거래일의 종가를 고릅니다.
+// 이 값은 그날 안에서는 언제 조회해도 같아서, 같은 날 다시 조회해도 기록이 흔들리지 않습니다.
 export const HYUNDAI = {
-  signal_id: 'hyundai-motor-005380',
+  signal_id: 'hyundai-motor-005380-prev-close',
   symbol: '005380.KS',
-  source_name: 'Yahoo Finance · 현대차(005380.KS)',
-  source_url: 'https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=1d&interval=1d',
+  source_name: 'Yahoo Finance 일봉 · 현대차(005380.KS) 전 거래일 종가',
+  source_url: 'https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d',
 };
 
-export function normalizeYahoo(json, fetchedAt) {
+// 원자료에서 '전 거래일' 일봉 한 개 고르기 (정규화·화면 대조가 같은 함수를 씀)
+export function pickPrevClose(json, recordDate) {
   const r = json?.chart?.result?.[0];
   const m = r?.meta;
   if (!m) throw new Error('chart.result[0].meta 없음');
   if (m.symbol !== HYUNDAI.symbol) throw new Error(`종목 불일치 ${m.symbol}`);
-  if (typeof m.regularMarketPrice !== 'number') throw new Error('regularMarketPrice가 숫자가 아님');
-  if (typeof m.regularMarketTime !== 'number') throw new Error('regularMarketTime이 숫자가 아님');
   if (m.currency !== 'KRW') throw new Error(`통화 불일치 ${m.currency}`);
+  if (m.dataGranularity && m.dataGranularity !== '1d') throw new Error(`일봉이 아님 (${m.dataGranularity})`);
+  const ts = r.timestamp;
+  const close = r.indicators?.quote?.[0]?.close;
+  if (!Array.isArray(ts) || !Array.isArray(close)) throw new Error('timestamp 또는 close 배열 없음');
+  let pick = null;
+  ts.forEach((t, i) => {
+    if (typeof t !== 'number') return;
+    const c = close[i];
+    if (c === null || c === undefined) return; // 휴장·미확정 칸
+    if (typeof c !== 'number' || !Number.isFinite(c)) throw new Error('close가 숫자가 아님');
+    const d = kstDate(t * 1000);
+    if (d < recordDate) pick = { trade_date: d, close: Math.round(c), time: t };
+  });
+  if (!pick) throw new Error(`${recordDate} 이전 거래일 종가가 응답에 없음`);
+  return pick;
+}
+
+// sourceUrl: 실제로 응답을 받은 주소(예비 주소로 받았으면 그 주소)
+export function normalizeYahoo(json, fetchedAt, sourceUrl = HYUNDAI.source_url) {
+  const recordDate = kstDate(fetchedAt);
+  const p = pickPrevClose(json, recordDate);
   return {
     signal_id: HYUNDAI.signal_id,
-    normalized_value: m.regularMarketPrice,
+    normalized_value: p.close,
     unit: 'KRW',
     source_name: HYUNDAI.source_name,
-    source_url: HYUNDAI.source_url,
-    source_time: new Date(m.regularMarketTime * 1000).toISOString(),
+    source_url: sourceUrl,
+    // 원천 일봉에 적힌 그 거래일의 시각을 그대로 KST(+09:00) RFC 3339로 저장 (과정 기록 칸과 같은 문자열)
+    source_time: kstRfc3339(p.time * 1000),
     fetched_at: fetchedAt,
     record_timezone: TIMEZONE,
-    record_date: kstDate(fetchedAt),
+    record_date: recordDate,
   };
 }
 
-// 원자료에서 화면 대조용 값만 뽑기
-export function rawFacts(json) {
-  const m = json?.chart?.result?.[0]?.meta ?? {};
-  return {
-    price: m.regularMarketPrice ?? null,
-    currency: m.currency ?? null,
-    time: typeof m.regularMarketTime === 'number' ? new Date(m.regularMarketTime * 1000).toISOString() : null,
-    exchange_timezone: m.exchangeTimezoneName ?? null,
-  };
+// 원자료 파일(data/raw/날짜.json)에서 화면 대조용 값만 뽑기
+export function rawFacts(json, recordDate) {
+  try {
+    const p = pickPrevClose(json, recordDate);
+    return { price: p.close, trade_date: p.trade_date, time: kstRfc3339(p.time * 1000), currency: json.chart.result[0].meta.currency, exchange_timezone: json.chart.result[0].meta.exchangeTimezoneName ?? null };
+  } catch {
+    return null;
+  }
 }

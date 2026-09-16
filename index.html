@@ -93,7 +93,7 @@
 
   <section id="live">
     <h2>오늘의 값</h2>
-    <p class="desc">평일 장 마감 뒤(15:40 KST) GitHub Actions가 한 번 조회해 저장합니다. 이 화면은 저장된 기록을 읽습니다.</p>
+    <p class="desc">기록하는 값은 <b>장 시작 전 멈춰 있는 가격 = 전 거래일 정규장 종가</b>입니다. 이 값은 하루 중 언제 조회해도 같아서, 같은 날 다시 조회해도 기록이 흔들리지 않습니다. GitHub Actions가 평일 15:40 KST에 조회해 저장하고(수동 실행 가능), 이 화면은 저장된 기록을 읽습니다.</p>
     <div class="panel" id="live-board"><p class="empty">불러오는 중…</p></div>
   </section>
 
@@ -189,7 +189,7 @@
 <script type="module">
 import {
   ERROR_GUIDE, kstDateTime, kstRfc3339, computeDelta, latestRow, emptyStore,
-  applyOutcome, identityNormalize, rawFacts, kstDate,
+  applyOutcome, identityNormalize, rawFacts, kstDate, HYUNDAI,
 } from './core.js';
 import { aggregate, movingAverage, changeOf } from './chart-data.js';
 
@@ -226,6 +226,7 @@ function renderBoard(el, store, { title, synthetic = false, onRetry = null, retr
       <dt>${synthetic ? '가상 출처 시각' : '출처 시각'}</dt><dd data-role="source-time">${row.source_time ? esc(kstDateTime(row.source_time)) : '원천이 시각을 주지 않음'}</dd>
       <dt>${synthetic ? '가상 조회 시각' : '조회 시각'}</dt><dd data-role="fetched-at">${esc(kstDateTime(row.fetched_at))}</dd>
       <dt>기준 시간대</dt><dd>${esc(row.record_timezone)} (${synthetic ? '가상 기록 날짜' : '기록 날짜'} ${esc(row.record_date)})</dd>
+      ${synthetic ? '' : `<dt>어느 거래일 값?</dt><dd data-role="trade-date">${row.source_time ? esc(String(row.source_time).slice(0, 10)) : '—'} 거래일 종가 (원천 일봉 표기 시각 그대로)</dd>`}
       <dt>저장된 날짜 수</dt><dd>${store.rows.length}일</dd>
     </dl>`;
   } else if (!loadError) {
@@ -261,12 +262,17 @@ async function loadLive() {
     const res = await fetch(`data/board.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     board = await res.json();
+    // 기준 변경 전(당일 현재가) 행은 일별 기록·어제 대비에서 빼고 따로 보여 줌
+    const all = board.rows ?? [];
+    board.legacy_rows = [...(board.legacy_rows ?? []), ...all.filter((r) => r.signal_id !== HYUNDAI.signal_id)];
+    board.rows = all.filter((r) => r.signal_id === HYUNDAI.signal_id);
+    if (!board.rows.length) { board.status = null; }
   } catch (e) {
     renderBoard($('#live-board'), emptyStore(), { title: '현대차 · 005380', loadError: String(e.message || e), onRetry: loadLive, retryLabel: '다시 불러오기' });
     return;
   }
   renderBoard($('#live-board'), board, {
-    title: '현대차 · 005380 · 현재가',
+    title: '현대차 · 005380 · 전 거래일 종가',
     onRetry: loadLive,
     retryLabel: '다시 시도 (최신 기록 다시 읽기)',
   });
@@ -275,6 +281,7 @@ async function loadLive() {
     alert?.insertAdjacentHTML('beforeend', '<p class="note">다시 시도는 저장소의 최신 조회 결과를 다시 읽습니다. 새 조회는 다음 예약 시각(평일 15:40 KST)이나 저장소 관리자의 수동 실행으로 이뤄집니다.</p>');
   }
   renderDaily(board);
+  renderLegacy(board);
   renderAttempts(board);
   await renderCheck(board);
 }
@@ -295,10 +302,19 @@ function renderDaily(board) {
     </tr>`;
   }).reverse().join('');
   $('#daily-table').innerHTML = `<table><thead><tr><th>기록 날짜</th><th>값</th><th>단위</th><th>어제 대비</th><th>출처 시각</th><th>조회 시각</th></tr></thead><tbody>${rows}</tbody></table>
-    <details style="margin-top:14px"><summary class="note" style="cursor:pointer">과정 기록 칸에 옮겨 적을 값 보기</summary>
+    <details open style="margin-top:14px"><summary class="note" style="cursor:pointer">ALEPH '실제 공개 원천 기록' 칸에 옮겨 적을 값</summary>
     <table style="margin-top:8px"><thead><tr><th>날짜</th><th>원천 URL</th><th>관측 시각(RFC 3339)</th><th>값</th><th>단위</th></tr></thead><tbody>
     ${board.rows.map((r) => `<tr><td>${esc(r.record_date)}</td><td class="mono">${esc(r.source_url)}</td><td class="mono">${esc(kstRfc3339(r.source_time))}</td><td class="mono">${r.normalized_value}</td><td class="mono">${esc(r.unit)}</td></tr>`).join('')}
     </tbody></table></details>`;
+}
+
+function renderLegacy(board) {
+  const rows = board.legacy_rows ?? [];
+  if (!rows.length) return;
+  $('#daily-table').insertAdjacentHTML('beforeend', `<details style="margin-top:14px"><summary class="note" style="cursor:pointer">기록 기준을 바꾸기 전 기록 ${rows.length}건 (당일 현재가 방식 · 지우지 않고 보존)</summary>
+    <table style="margin-top:8px"><thead><tr><th>기록 날짜</th><th>값</th><th>단위</th><th>출처 시각</th><th>조회 시각</th></tr></thead><tbody>
+    ${rows.map((r) => `<tr><td>${esc(r.record_date)}</td><td class="num">${fmt(r.normalized_value)}</td><td>${esc(r.unit)}</td><td>${esc(kstDateTime(r.source_time) ?? '—')}</td><td>${esc(kstDateTime(r.fetched_at))}</td></tr>`).join('')}
+    </tbody></table><p class="note">2026-09-16부터 기록 값을 '전 거래일 종가'로 바꿨습니다. 위 행은 다른 기준이라 어제 대비 계산에 쓰지 않습니다.</p></details>`);
 }
 
 function renderAttempts(board) {
@@ -319,7 +335,7 @@ async function renderCheck(board) {
       if (res.ok) raw = rawCache[row.record_date] = await res.json();
     } catch { /* 원자료 없음 */ }
   }
-  const facts = raw ? rawFacts(raw.body) : null;
+  const facts = raw ? rawFacts(raw.body, row.record_date) : null;
   const shown = {
     value: Number($('#live-board [data-role="value"]')?.textContent.replace(/[^0-9.-]/g, '')),
     unit: $('#live-board [data-role="unit"]')?.textContent,
@@ -330,13 +346,15 @@ async function renderCheck(board) {
       facts && facts.price === row.normalized_value && row.normalized_value === shown.value],
     ['단위', facts ? esc(facts.currency) : '—', esc(row.unit), esc(shown.unit),
       facts && facts.currency === row.unit && row.unit === shown.unit],
-    ['출처 시각', facts ? esc(kstDateTime(facts.time)) : '—', esc(kstDateTime(row.source_time)), esc(shown.time),
-      facts && facts.time === row.source_time && kstDateTime(row.source_time) === shown.time],
+    ['출처 시각 (RFC 3339)', facts ? esc(facts.time) : '—', esc(row.source_time), esc(kstRfc3339(row.source_time)),
+      facts && facts.time === row.source_time && kstRfc3339(row.source_time) === row.source_time && kstDateTime(row.source_time) === shown.time],
+    ['거래일', facts ? esc(facts.trade_date) : '—', esc(String(row.source_time).slice(0, 10)), esc($('#live-board [data-role="trade-date"]')?.textContent.slice(0, 10)),
+      facts && facts.trade_date === String(row.source_time).slice(0, 10) && $('#live-board [data-role="trade-date"]')?.textContent.startsWith(facts.trade_date)],
   ];
   $('#check-table').innerHTML = `<table><thead><tr><th>항목</th><th>원자료</th><th>저장값</th><th>화면값</th><th>일치</th></tr></thead><tbody>${
     lines.map(([k, a, b, c, ok]) => `<tr><td>${k}</td><td>${a}</td><td>${b}</td><td>${c}</td><td class="${ok ? 'pass' : 'fail'}">${ok ? '일치' : '불일치'}</td></tr>`).join('')
   }</tbody></table>
-  <p class="note">원자료: <a href="data/raw/${esc(row.record_date)}.json">data/raw/${esc(row.record_date)}.json</a> (${raw ? `조회 ${esc(kstDateTime(raw.fetched_at))}, HTTP ${raw.http_status}, 원천 시간대 ${esc(facts?.exchange_timezone)}` : '파일 없음'}) · 저장값: <a href="data/board.json">data/board.json</a></p>`;
+  <p class="note">원자료: <a href="data/raw/${esc(row.record_date)}.json">data/raw/${esc(row.record_date)}.json</a> (${raw ? `조회 ${esc(kstDateTime(raw.fetched_at))}, HTTP ${raw.http_status}, 원천 시간대 ${esc(facts?.exchange_timezone)}, 5일 일봉 중 ${esc(facts?.trade_date)} 칸의 종가` : '파일 없음'}) · 저장값: <a href="data/board.json">data/board.json</a></p>`;
 }
 
 /* ---------- 실패 재생 실험실 ---------- */

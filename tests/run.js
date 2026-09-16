@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import {
-  emptyStore, applyOutcome, identityNormalize, computeDelta, latestRow, normalizeYahoo, kstDate,
+  emptyStore, applyOutcome, identityNormalize, computeDelta, latestRow, normalizeYahoo, kstDate, HYUNDAI, validateReading, rawFacts,
 } from '../core.js';
 
 const run = promisify(execFile);
@@ -87,53 +87,88 @@ for (const [name, c] of FAILS) {
   check('C21 다음 KST 날짜 → 2행', s.rows.length === 2 && s.rows[1].record_date === '2026-09-16', s.rows.map((r) => r.record_date).join(','));
 }
 
-// 5. Yahoo 응답 정규화 (합성 응답, 1789453800 = 2026-09-15 15:30 KST)
-const yahoo = (price, t, extra = {}) => ({
-  chart: { result: [{ meta: { currency: 'KRW', symbol: '005380.KS', exchangeTimezoneName: 'Asia/Seoul', regularMarketPrice: price, regularMarketTime: t, ...extra } }], error: null },
+// 5. Yahoo 5일 일봉 → 전 거래일 종가 (합성 응답)
+// 일봉 시각은 그 거래일 09:00 KST(=00:00Z). 마지막 칸은 '오늘'(장중이면 값이 바뀌는 칸)
+const KST9 = (d) => Date.parse(`${d}T00:00:00Z`) / 1000;
+const yahoo = (days, closes, extra = {}) => ({
+  chart: { result: [{
+    meta: { currency: 'KRW', symbol: '005380.KS', exchangeTimezoneName: 'Asia/Seoul', dataGranularity: '1d', regularMarketPrice: closes[closes.length - 1], ...extra },
+    timestamp: days.map(KST9),
+    indicators: { quote: [{ close: closes }] },
+  }], error: null },
 });
 {
-  const r = normalizeYahoo(yahoo(123450, 1789453800), '2026-09-15T06:40:00.000Z');
-  check('C10 정규화 값·단위·시각', r.normalized_value === 123450 && r.unit === 'KRW' && r.source_time === new Date(1789453800 * 1000).toISOString() && r.record_date === '2026-09-15');
+  const body = yahoo(['2026-09-14', '2026-09-15', '2026-09-16'], [300, 367000, 361000]);
+  // 9/16 09:40 KST(장중)에 조회해도 오늘 칸(361000)이 아니라 9/15 종가를 고른다
+  const r = normalizeYahoo(body, '2026-09-16T00:40:00.000Z');
+  check('전 거래일 종가 선택 (장중 조회)', r.normalized_value === 367000 && r.record_date === '2026-09-16' && r.source_time === '2026-09-15T09:00:00+09:00', `${r.normalized_value} ${r.source_time}`);
+  check('C10 정규화 값·단위·주소', r.unit === 'KRW' && r.source_url === HYUNDAI.source_url && r.signal_id === HYUNDAI.signal_id);
+  check('C23 저장 시각이 스키마(date-time)를 통과', validateReading(r).length === 0, validateReading(r).join(','));
+  // 같은 날 장 마감 뒤 다시 조회해도 같은 값 (오늘 칸이 확정돼도 영향 없음)
+  const r2 = normalizeYahoo(yahoo(['2026-09-14', '2026-09-15', '2026-09-16'], [300, 367000, 359000]), '2026-09-16T06:40:00.000Z');
+  check('같은 날 다시 조회해도 같은 값·시각', r2.normalized_value === r.normalized_value && r2.source_time === r.source_time);
+  // 장 시작 전(오늘 칸이 null)에도 같은 값
+  const r3 = normalizeYahoo(yahoo(['2026-09-15', '2026-09-16'], [367000, null]), '2026-09-15T23:10:00.000Z');
+  check('장 시작 전 조회도 같은 값', r3.normalized_value === 367000 && r3.record_date === '2026-09-16');
+  // 월요일 조회 → 금요일 종가 (주말 건너뜀)
+  const r4 = normalizeYahoo(yahoo(['2026-09-10', '2026-09-11', '2026-09-14'], [389000, 382500, null]), '2026-09-13T23:30:00.000Z');
+  check('월요일 조회 → 직전 금요일 종가', r4.normalized_value === 382500 && r4.source_time.startsWith('2026-09-11'));
+  const r5 = normalizeYahoo(body, '2026-09-16T00:40:00.000Z', 'https://query2.example/x');
+  check('예비 주소로 받으면 그 주소를 저장', r5.source_url === 'https://query2.example/x');
   let threw = false;
-  try { normalizeYahoo(yahoo('123450', 1789453800), 'x'); } catch { threw = true; }
-  check('C16 가격이 문자열이면 형식 오류', threw);
+  try { normalizeYahoo(yahoo(['2026-09-15', '2026-09-16'], ['367000', null]), '2026-09-16T00:40:00.000Z'); } catch { threw = true; }
+  check('C16 종가가 문자열이면 형식 오류', threw);
+  threw = false;
+  try { normalizeYahoo(yahoo(['2026-09-16'], [361000]), '2026-09-16T00:40:00.000Z'); } catch { threw = true; }
+  check('전 거래일 칸이 없으면 저장하지 않음', threw);
+  const f = rawFacts(body, '2026-09-16');
+  check('C10 원자료 대조값도 같은 규칙', f.price === 367000 && f.time === r.source_time && f.trade_date === '2026-09-15');
 }
 
 // 6. 실제 조회 스크립트 끝까지 (가짜 원천 서버)
 {
   let mode = 'ok';
-  let price = 1000;
+  let closes = [367000, 361000];
   const server = createServer((req, res) => {
     if (mode === 'slow') { setTimeout(() => { res.end('{}'); }, 1500); return; }
     if (mode === '401') { res.writeHead(401, { 'content-type': 'application/json' }); res.end('{"e":1}'); return; }
     if (mode === '429') { res.writeHead(429, { 'content-type': 'application/json', 'retry-after': '60' }); res.end('{"e":1}'); return; }
-    const body = mode === 'schema' ? yahoo(String(price), 1789453800) : yahoo(price, Math.floor(Date.now() / 1000));
+    const today = kstDate(new Date());
+    const y = new Date(Date.parse(`${today}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
+    const body = mode === 'schema' ? yahoo([y, today], [String(closes[0]), null]) : yahoo([y, today], closes);
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify(body));
   });
   await new Promise((r) => server.listen(0, r));
   const url = `http://127.0.0.1:${server.address().port}/chart`;
   const dir = await mkdtemp(join(tmpdir(), 't04-'));
+  // 기준 변경 전 행(당일 현재가)이 들어 있는 기존 파일 → legacy_rows로 보존되는지 확인
+  const oldRow = { id: 'hyundai-motor-005380:2000-01-01', signal_id: 'hyundai-motor-005380', normalized_value: 1, unit: 'KRW', record_date: '2000-01-01' };
+  await writeFile(join(dir, 'board.json'), JSON.stringify({ rows: [oldRow], status: { freshness: 'fresh', error_code: 'none' }, attempts: [] }));
   const env = { ...process.env, T04_DATA_DIR: dir, T04_TEST_URL: url, T04_DEADLINE_MS: '500' };
   const script = new URL('../scripts/fetch-daily.js', import.meta.url).pathname;
   const go = async () => { await run('node', [script], { env }); return JSON.parse(await readFile(join(dir, 'board.json'), 'utf8')); };
 
   let b = await go();
-  check('스크립트 정상 조회 → 1행 fresh', b.rows.length === 1 && b.status.freshness === 'fresh' && b.rows[0].normalized_value === 1000);
+  check('스크립트 정상 조회 → 새 기준 1행 fresh', b.rows.length === 1 && b.status.freshness === 'fresh' && b.rows[0].normalized_value === 367000);
+  check('기준 변경 전 행은 legacy_rows로 보존', b.legacy_rows.length === 1 && b.legacy_rows[0].normalized_value === 1);
   const raw = JSON.parse(await readFile(join(dir, 'raw', `${b.rows[0].record_date}.json`), 'utf8'));
-  check('C10 원자료 = 저장값', raw.body.chart.result[0].meta.regularMarketPrice === b.rows[0].normalized_value);
-  price = 1010; b = await go();
-  check('스크립트 같은 날 재실행 → 1행 갱신', b.rows.length === 1 && b.rows[0].normalized_value === 1010);
+  const facts = rawFacts(raw.body, b.rows[0].record_date);
+  check('C10 원자료 = 저장값 (값·시각)', facts.price === b.rows[0].normalized_value && facts.time === b.rows[0].source_time);
+  closes = [367000, 355000]; b = await go();
+  check('같은 날 재실행(오늘 칸만 변함) → 1행, 값 그대로', b.rows.length === 1 && b.rows[0].normalized_value === 367000 && b.legacy_rows.length === 1);
+  closes = [370000, 355000]; b = await go();
+  check('스크립트 같은 날 재실행(원천 정정) → 1행 갱신', b.rows.length === 1 && b.rows[0].normalized_value === 370000);
   for (const [m, code] of [['slow', 'timeout'], ['401', 'auth'], ['429', 'rate_limit'], ['schema', 'schema_error']]) {
     mode = m; b = await go();
-    check(`스크립트 ${m} → stale/${code}, 값 유지`, b.status.freshness === 'stale' && b.status.error_code === code && b.rows[0].normalized_value === 1010, b.last_attempt.detail);
+    check(`스크립트 ${m} → stale/${code}, 값 유지`, b.status.freshness === 'stale' && b.status.error_code === code && b.rows[0].normalized_value === 370000, b.last_attempt.detail);
   }
   server.close();
   const env2 = { ...env, T04_TEST_URL: 'http://127.0.0.1:9/none' };
   await run('node', [script], { env: env2 });
   b = JSON.parse(await readFile(join(dir, 'board.json'), 'utf8'));
-  check('스크립트 연결 불가 → stale/offline, 값 유지', b.status.error_code === 'offline' && b.rows[0].normalized_value === 1010);
-  check('시도 기록 누적', b.attempts.length === 7);
+  check('스크립트 연결 불가 → stale/offline, 값 유지', b.status.error_code === 'offline' && b.rows[0].normalized_value === 370000);
+  check('시도 기록 누적', b.attempts.length === 8 && b.legacy_rows.length === 1);
   await rm(dir, { recursive: true, force: true });
 }
 
