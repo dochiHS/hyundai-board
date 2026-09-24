@@ -78,6 +78,18 @@
       "fetched_at": "2026-09-23T12:08:21.047Z",
       "record_timezone": "Asia/Seoul",
       "record_date": "2026-09-23"
+    },
+    {
+      "id": "hyundai-motor-005380-prev-close:2026-09-24",
+      "signal_id": "hyundai-motor-005380-prev-close",
+      "normalized_value": 353500,
+      "unit": "KRW",
+      "source_name": "Yahoo Finance 일봉 · 현대차(005380.KS) 전 거래일 종가",
+      "source_url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d",
+      "source_time": "2026-09-23T09:00:00+09:00",
+      "fetched_at": "2026-09-24T12:11:32.034Z",
+      "record_timezone": "Asia/Seoul",
+      "record_date": "2026-09-24"
     }
   ],
   "status": {
@@ -85,7 +97,7 @@
     "error_code": "none"
   },
   "last_attempt": {
-    "at": "2026-09-23T12:08:21.047Z",
+    "at": "2026-09-24T12:11:32.034Z",
     "ok": true,
     "error_code": "none",
     "detail": null,
@@ -93,6 +105,14 @@
     "http_status": 200
   },
   "attempts": [
+    {
+      "at": "2026-09-24T12:11:32.034Z",
+      "ok": true,
+      "error_code": "none",
+      "detail": null,
+      "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d",
+      "http_status": 200
+    },
     {
       "at": "2026-09-23T12:08:21.047Z",
       "ok": true,
