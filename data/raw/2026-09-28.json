@@ -1,0 +1,135 @@
+{
+  "fetched_at": "2026-09-28T14:27:37.217Z",
+  "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d",
+  "http_status": 200,
+  "body": {
+    "chart": {
+      "result": [
+        {
+          "meta": {
+            "currency": "KRW",
+            "symbol": "005380.KS",
+            "exchangeName": "KSC",
+            "fullExchangeName": "KSE",
+            "instrumentType": "EQUITY",
+            "firstTradeDate": 946944000,
+            "regularMarketTime": 1790577013,
+            "hasPrePostMarketData": false,
+            "gmtoffset": 32400,
+            "timezone": "KST",
+            "exchangeTimezoneName": "Asia/Seoul",
+            "regularMarketPrice": 354500,
+            "regularMarketChangePercent": 0.283,
+            "fulldayPrice": 354500,
+            "fulldayChange": 1000,
+            "fulldayChangePercent": 0.283,
+            "fiftyTwoWeekHigh": 783000,
+            "fiftyTwoWeekLow": 214000,
+            "regularMarketDayHigh": 358000,
+            "regularMarketDayLow": 353500,
+            "regularMarketVolume": 493755,
+            "longName": "Hyundai Motor Company",
+            "shortName": "HyundaiMtr",
+            "chartPreviousClose": 363000,
+            "priceHint": 2,
+            "currentTradingPeriod": {
+              "pre": {
+                "timezone": "KST",
+                "start": 1790548200,
+                "end": 1790553600,
+                "gmtoffset": 32400
+              },
+              "regular": {
+                "timezone": "KST",
+                "start": 1790553600,
+                "end": 1790575200,
+                "gmtoffset": 32400
+              },
+              "post": {
+                "timezone": "KST",
+                "start": 1790575200,
+                "end": 1790586000,
+                "gmtoffset": 32400
+              }
+            },
+            "dataGranularity": "1d",
+            "range": "5d",
+            "validRanges": [
+              "1d",
+              "5d",
+              "1mo",
+              "3mo",
+              "6mo",
+              "1y",
+              "2y",
+              "5y",
+              "10y",
+              "ytd",
+              "max"
+            ]
+          },
+          "timestamp": [
+            1789689600,
+            1789948800,
+            1790035200,
+            1790121600,
+            1790577013
+          ],
+          "indicators": {
+            "quote": [
+              {
+                "low": [
+                  365000,
+                  358500,
+                  360000,
+                  352000,
+                  353500
+                ],
+                "open": [
+                  369000,
+                  365500,
+                  364000,
+                  364000,
+                  357000
+                ],
+                "high": [
+                  372000,
+                  365500,
+                  370000,
+                  365500,
+                  358000
+                ],
+                "close": [
+                  365000,
+                  359000,
+                  360500,
+                  353500,
+                  354500
+                ],
+                "volume": [
+                  527407,
+                  459420,
+                  457837,
+                  550575,
+                  493755
+                ]
+              }
+            ],
+            "adjclose": [
+              {
+                "adjclose": [
+                  365000,
+                  359000,
+                  360500,
+                  353500,
+                  354500
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "error": null
+    }
+  }
+}
