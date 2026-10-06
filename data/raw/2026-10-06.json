@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-10-05T15:15:54.767Z",
+  "fetched_at": "2026-10-06T13:36:58.702Z",
   "url": "https://query1.finance.yahoo.com/v8/finance/chart/005380.KS?range=5d&interval=1d",
   "http_status": 200,
   "body": {
@@ -13,42 +13,42 @@
             "fullExchangeName": "KSE",
             "instrumentType": "EQUITY",
             "firstTradeDate": 946944000,
-            "regularMarketTime": 1790922628,
+            "regularMarketTime": 1791268219,
             "hasPrePostMarketData": false,
             "gmtoffset": 32400,
             "timezone": "KST",
             "exchangeTimezoneName": "Asia/Seoul",
-            "regularMarketPrice": 346500,
-            "regularMarketChangePercent": -0.716,
-            "fulldayPrice": 346500,
-            "fulldayChange": -2500,
-            "fulldayChangePercent": -0.716,
+            "regularMarketPrice": 348000,
+            "regularMarketChangePercent": 0.433,
+            "fulldayPrice": 348000,
+            "fulldayChange": 1500,
+            "fulldayChangePercent": 0.433,
             "fiftyTwoWeekHigh": 783000,
             "fiftyTwoWeekLow": 214000,
-            "regularMarketDayHigh": 348000,
-            "regularMarketDayLow": 343500,
-            "regularMarketVolume": 453256,
+            "regularMarketDayHigh": 353000,
+            "regularMarketDayLow": 345000,
+            "regularMarketVolume": 445662,
             "longName": "Hyundai Motor Company",
             "shortName": "HyundaiMtr",
-            "chartPreviousClose": 353500,
+            "chartPreviousClose": 354500,
             "priceHint": 2,
             "currentTradingPeriod": {
               "pre": {
                 "timezone": "KST",
-                "end": 1791244800,
                 "start": 1791239400,
+                "end": 1791244800,
                 "gmtoffset": 32400
               },
               "regular": {
                 "timezone": "KST",
-                "end": 1791266400,
                 "start": 1791244800,
+                "end": 1791266400,
                 "gmtoffset": 32400
               },
               "post": {
                 "timezone": "KST",
-                "end": 1791277200,
                 "start": 1791266400,
+                "end": 1791277200,
                 "gmtoffset": 32400
               }
             },
@@ -69,60 +69,60 @@
             ]
           },
           "timestamp": [
-            1790553600,
             1790640000,
             1790726400,
             1790812800,
-            1790899200
+            1790899200,
+            1791244800
           ],
           "indicators": {
             "quote": [
               {
-                "volume": [
-                  443320,
-                  549641,
-                  458002,
-                  347462,
-                  453256
-                ],
-                "low": [
-                  353500,
-                  344500,
-                  344500,
-                  343500,
-                  343500
-                ],
-                "high": [
-                  358000,
-                  352000,
-                  353500,
-                  349000,
-                  348000
-                ],
                 "close": [
-                  354500,
                   350000,
                   345000,
                   349000,
-                  346500
+                  346500,
+                  348000
+                ],
+                "low": [
+                  344500,
+                  344500,
+                  343500,
+                  343500,
+                  345000
+                ],
+                "volume": [
+                  549641,
+                  458002,
+                  347462,
+                  453256,
+                  445662
+                ],
+                "high": [
+                  352000,
+                  353500,
+                  349000,
+                  348000,
+                  353000
                 ],
                 "open": [
-                  357000,
                   351500,
                   350000,
                   348500,
-                  346500
+                  346500,
+                  349500
                 ]
               }
             ],
             "adjclose": [
               {
                 "adjclose": [
-                  354500,
                   350000,
                   345000,
                   349000,
-                  346500
+                  346500,
+                  348000
                 ]
               }
             ]
